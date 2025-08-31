@@ -1,0 +1,34 @@
+# Django
+*.log
+*.pot
+*.pyc
+**/__pycache__/
+db.sqlite3
+media
+staticfiles
+.env
+
+# Virtualenv
+venv/
+ENV/
+env/
+.venv/
+.Python
+
+# VSCode / PyCharm
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Coverage / test
+htmlcov/
+.coverage
+.tox/
+.pytest_cache/
+
+# Migrations
+*/migrations/*.py
+!*/migrations/__init__.py
