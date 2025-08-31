@@ -30,5 +30,5 @@ htmlcov/
 .pytest_cache/
 
 # Migrations
-*/migrations/*.py
-!*/migrations/__init__.py
+# */migrations/*.py
+# !*/migrations/__init__.py
