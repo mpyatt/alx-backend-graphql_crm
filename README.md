@@ -1,6 +1,6 @@
 # alx-backend-graphql_crm
 
-A Django + GraphQL CRM backend for ALX Backend Engineering tasks.
+A Django + GraphQL CRM backend for ALX ProDev Backend Engineering tasks.
 
 ## Features
 
