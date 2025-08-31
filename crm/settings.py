@@ -1,5 +1,6 @@
 INSTALLED_APPS = [
     "django_crontab",
+    "django_celery_beat"
 ]
 
 # All cron jobs in one list
