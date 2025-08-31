@@ -9,7 +9,7 @@ from graphene_django.filter import DjangoFilterConnectionField
 from django.db import transaction, models
 from django.core.exceptions import ValidationError, ObjectDoesNotExist
 
-from .models import Customer, Product, Order
+from crm.models import Product, Customer, Order
 from .filters import CustomerFilter, ProductFilter, OrderFilter
 
 PHONE_RE = re.compile(r"^\+?\d[\d\-]{6,}$")
