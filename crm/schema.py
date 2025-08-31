@@ -38,6 +38,27 @@ class OrderType(DjangoObjectType):
         fields = ("id", "customer", "products", "total_amount", "order_date")
 
 
+class UpdateLowStockProducts(graphene.Mutation):
+    class Arguments:
+        pass  # no inputs
+
+    ok = graphene.Boolean()
+    message = graphene.String()
+    products = graphene.List(ProductType)
+
+    @staticmethod
+    def mutate(root, info):
+        low = list(Product.objects.filter(stock__lt=10).order_by("id"))
+        for p in low:
+            p.stock = (p.stock or 0) + 10
+            p.save(update_fields=["stock"])
+        return UpdateLowStockProducts(
+            ok=True,
+            message=f"Updated {len(low)} product(s).",
+            products=low,
+        )
+
+
 # ---------- Inputs ----------
 
 class CustomerInput(graphene.InputObjectType):
@@ -247,3 +268,4 @@ class Mutation(graphene.ObjectType):
     bulk_create_customers = BulkCreateCustomers.Field()
     create_product = CreateProduct.Field()
     create_order = CreateOrder.Field()
+    update_low_stock_products = UpdateLowStockProducts.Field()
