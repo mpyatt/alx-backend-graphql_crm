@@ -1,77 +1,75 @@
 from decimal import Decimal
+from datetime import timedelta
+from random import sample
 from django.utils import timezone
 from django.db import transaction
+
 from crm.models import Customer, Product, Order
 
+# --- Sample data (edit as you like) ---
+CUSTOMERS = [
+    {"name": "Alice Johnson",  "email": "alice@example.com", "phone": "+1234567890"},
+    {"name": "Bob Smith",      "email": "bob@example.com",   "phone": "123-456-7890"},
+    {"name": "Carol Baker",    "email": "carol@example.com", "phone": "+14445556666"},
+    {"name": "Dave Wilson",    "email": "dave@example.com",  "phone": "+15105551234"},
+    {"name": "Eve Cooper",     "email": "eve@example.com",   "phone": "555-000-1212"},
+]
 
-def get_or_create_customer(name, email, phone=""):
-    obj, _ = Customer.objects.get_or_create(
-        email=email,
-        defaults={"name": name, "phone": phone},
-    )
-    return obj
+PRODUCTS = [
+    {"name": "Laptop",     "price": Decimal("999.99"), "stock": 10},
+    {"name": "Phone",      "price": Decimal("699.00"), "stock": 15},
+    {"name": "Headphones", "price": Decimal("149.99"), "stock": 25},
+    {"name": "Monitor",    "price": Decimal("229.00"), "stock": 8},
+    {"name": "Keyboard",   "price": Decimal("89.50"),  "stock": 30},
+]
 
 
-def get_or_create_product(name, price, stock=0):
-    obj, _ = Product.objects.get_or_create(
-        name=name,
-        defaults={"price": Decimal(str(price)), "stock": stock},
-    )
-    return obj
-
-
-def ensure_order(customer, products, order_date=None):
-    """
-    Create an order for this customer for the given products if one with the
-    same product set doesn't already exist today. Computes total_amount.
-    """
-    if order_date is None:
-        order_date = timezone.now()
-
-    # naive de-dup: look for any order today with exact same product ids
-    today = order_date.date()
-    existing = (
-        Order.objects.filter(customer=customer, order_date__date=today)
-        .prefetch_related("products")
-    )
-    product_ids = sorted([p.id for p in products])
-    for o in existing:
-        if sorted(list(o.products.values_list("id", flat=True))) == product_ids:
-            return o  # already exists
-
-    with transaction.atomic():
-        order = Order.objects.create(customer=customer, order_date=order_date)
-        order.products.set(products)
-        total = Product.objects.filter(id__in=product_ids).aggregate_sum = (
-            sum((p.price for p in products), Decimal("0"))
+def ensure_customers():
+    out = []
+    for row in CUSTOMERS:
+        obj, _ = Customer.objects.get_or_create(
+            email=row["email"],
+            defaults={"name": row["name"], "phone": row["phone"]},
         )
-        order.total_amount = total
-        order.save(update_fields=["total_amount"])
-        return order
+        out.append(obj)
+    return out
 
 
-def run():
-    # ---- Customers
-    alice = get_or_create_customer("Alice", "alice@example.com", "+1234567890")
-    bob = get_or_create_customer("Bob",   "bob@example.com",   "123-456-7890")
-    carol = get_or_create_customer("Carol", "carol@example.com")
-
-    # ---- Products
-    laptop = get_or_create_product("Laptop",   999.99, stock=10)
-    mouse = get_or_create_product("Mouse",     24.99, stock=50)
-    keyboard = get_or_create_product("Keyboard",  49.99, stock=40)
-    monitor = get_or_create_product("Monitor",  199.99, stock=25)
-
-    # ---- Orders
-    ensure_order(alice, [laptop, mouse])
-    ensure_order(bob,   [keyboard, mouse])
-    ensure_order(carol, [monitor])
-
-    print("✅ Seed complete:")
-    print(f"  Customers: {Customer.objects.count()}")
-    print(f"  Products : {Product.objects.count()}")
-    print(f"  Orders   : {Order.objects.count()}")
+def ensure_products():
+    out = []
+    for row in PRODUCTS:
+        obj, _ = Product.objects.get_or_create(
+            name=row["name"],
+            defaults={"price": row["price"], "stock": row["stock"]},
+        )
+        out.append(obj)
+    return out
 
 
-if __name__ == "__main__":
-    run()
+def create_orders(customers, products, num_orders=5, days_back=7):
+    created = []
+    for i in range(num_orders):
+        customer = customers[i % len(customers)]
+        picks = sample(products, k=min(len(products), max(1, (i % 3) + 1)))
+        when = timezone.now() - timedelta(days=(i % days_back))
+        with transaction.atomic():
+            order = Order.objects.create(customer=customer, order_date=when)
+            order.products.set(picks)
+            total = sum((p.price for p in picks), Decimal("0"))
+            order.total_amount = total
+            order.save(update_fields=["total_amount"])
+            created.append(order)
+    return created
+
+
+# -------- Run ----------
+customers = ensure_customers()
+products = ensure_products()
+
+if not Order.objects.exists():
+    create_orders(customers, products, num_orders=5)
+
+print(
+    f"Seed complete. Customers={Customer.objects.count()}, "
+    f"Products={Product.objects.count()}, Orders={Order.objects.count()}"
+)

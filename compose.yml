@@ -1,0 +1,123 @@
+name: alx-backend-graphql-crm
+
+services:
+  postgres:
+    container_name: alx-backend-graphql-crm-postgres
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-crm}
+      POSTGRES_USER: ${POSTGRES_USER:-crm}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-crm}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    restart: unless-stopped
+    networks: [app-net]
+
+  redis:
+    container_name: alx-backend-graphql-crm-redis
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+    networks: [app-net]
+
+  server:
+    container_name: alx-backend-graphql-crm-server
+    build: .
+    command: python manage.py runserver 0.0.0.0:8000
+    env_file: .env
+    environment:
+      # DB / Django
+      POSTGRES_HOST: postgres
+      DJANGO_ALLOWED_HOSTS: "localhost,127.0.0.1,server"
+      DJANGO_MIGRATE: "1"
+      DB_SEED: "1"
+      # Celery/Redis
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+      # GraphQL (used by tasks)
+      GRAPHQL_ENDPOINT: http://localhost:8000/graphql
+    volumes:
+      - .:/app
+      - tmp:/tmp
+    ports:
+      - "8000:8000"
+    depends_on:
+      - postgres
+      - redis
+    restart: unless-stopped
+    networks: [app-net]
+
+  worker:
+    container_name: alx-backend-graphql-crm-worker
+    build: .
+    command: celery -A crm worker -l info
+    env_file: .env
+    environment:
+      POSTGRES_HOST: postgres
+      DJANGO_MIGRATE: "0"
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+      GRAPHQL_ENDPOINT: http://server:8000/graphql
+    volumes:
+      - .:/app
+      - tmp:/tmp
+    depends_on:
+      - postgres
+      - redis
+      - server
+    restart: unless-stopped
+    networks: [app-net]
+
+  beat:
+    container_name: alx-backend-graphql-crm-beat
+    build: .
+    command: celery -A crm beat -l info
+    env_file: .env
+    environment:
+      POSTGRES_HOST: postgres
+      DJANGO_MIGRATE: "0"
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+      GRAPHQL_ENDPOINT: http://server:8000/graphql
+    volumes:
+      - .:/app
+      - tmp:/tmp
+    depends_on:
+      - postgres
+      - redis
+      - server
+    restart: unless-stopped
+    networks: [app-net]
+
+  cron:
+    container_name: alx-backend-graphql-crm-cron
+    user: "0:0"  # cron needs root for /var/run/crond.pid
+    build: .
+    command: sh -c "python manage.py crontab add && cron -f"
+    env_file: .env
+    environment:
+      POSTGRES_HOST: postgres
+      DJANGO_MIGRATE: "0"
+      GRAPHQL_ENDPOINT: http://server:8000/graphql
+    volumes:
+      - .:/app
+      - tmp:/tmp
+    depends_on:
+      - postgres
+      - server
+    restart: unless-stopped
+    networks: [app-net]
+
+volumes:
+  postgres-data:
+  redis-data:
+  tmp:
+
+networks:
+  app-net:
+    name: alx-backend-graphql-crm-net
+    driver: bridge

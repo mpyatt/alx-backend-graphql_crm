@@ -1,0 +1,57 @@
+# VCS
+.git
+.git/*
+.gitignore
+
+# Python bytecode & build artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+build/
+dist/
+.eggs/
+*.egg-info/
+pip-wheel-metadata/
+.cache/
+.pytest_cache/
+.mypy_cache/
+.tox/
+.coverage
+coverage.xml
+htmlcov/
+
+# Virtual environments
+venv/
+.venv/
+env/
+ENV/
+
+# OS / editor junk
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Node (if any)
+node_modules/
+
+# Django runtime stuff (mounted/created at runtime)
+tmp/
+staticfiles/
+media/
+*.log
+db.sqlite3
+*.sqlite3
+celerybeat-schedule
+
+# Env files
+.env
+.env.*
+
+# Compose files are not needed in build context
+compose*.yml
+compose*.yaml
+docker-compose*.yml
+docker-compose*.yaml
